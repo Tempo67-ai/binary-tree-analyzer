@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>二叉树可视化高级分析器</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f5f7fa; color: #333; margin: 0; padding: 20px; }
+        h1 { text-align: center; color: #2c3e50; }
+        .container { max-width: 1000px; margin: 0 auto; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .panel { background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+        .full-width { grid-column: 1 / -1; }
+        label { font-weight: bold; display: block; margin-bottom: 8px; color: #34495e; }
+        input[type="text"], input[type="number"] { width: calc(100% - 22px); padding: 10px; margin-bottom: 15px; border: 1px solid #ccc; border-radius: 4px; font-family: monospace; }
+        
+        /* 按钮样式优化 */
+        .btn-group { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 10px; }
+        button { background-color: #3498db; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-size: 14px; transition: background 0.3s; }
+        button:hover { background-color: #2980b9; }
+        button.action-btn { background-color: #e67e22; }
+        button.action-btn:hover { background-color: #d35400; }
+        button.demo-btn { background-color: #2ecc71; }
+        button.demo-btn:hover { background-color: #27ae60; }
+        
+        h3 { border-bottom: 2px solid #ecf0f1; padding-bottom: 5px; color: #2c3e50; margin-top: 0; }
+        .result-item { margin-bottom: 8px; }
+        .result-label { font-weight: bold; color: #555; }
+        
+        .canvas-container { width: 100%; overflow-x: auto; background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 4px; text-align: center; position: relative;}
+        .flex-row { display: flex; gap: 10px; align-items: center; }
+        .flex-row input { margin-bottom: 0; width: 80px; }
+    </style>
+</head>
+<body>
+
+<h1>二叉树可视化高级分析器</h1>
+
+<div class="container">
+    <!-- 控制面板 -->
+    <div class="panel full-width">
+        <label for="treeInput">1. 输入二叉树数据 (层序遍历，用 null 表示空节点):</label>
+        <input type="text" id="treeInput" placeholder="例如: [8, 4, 12, 2, 6, 10, 14, null, null, 5, 7]">
+        
+        <div class="btn-group">
+            <button onclick="analyzeTree()">解析并构建二叉树</button>
+            <button class="demo-btn" onclick="loadDemo()">加载示例数据</button>
+            <button class="action-btn" onclick="generateRandomBST()">🎲 随机生成 BST (拓展1)</button>
+        </div>
+    </div>
+
+    <!-- 图形化可视化 -->
+    <div class="panel full-width">
+        <h3>树形可视化输出</h3>
+        <div class="btn-group">
+            <span style="line-height: 32px; font-weight: bold; color: #555; margin-right: 10px;">拓展3 (动画演示):</span>
+            <button onclick="animateTraversal('pre')">前序动画</button>
+            <button onclick="animateTraversal('in')">中序动画</button>
+            <button onclick="animateTraversal('post')">后序动画</button>
+            <button onclick="animateTraversal('level')">层序动画</button>
+        </div>
+        <div class="canvas-container">
+            <canvas id="treeCanvas"></canvas>
+        </div>
+    </div>
+
+    <!-- 遍历结果 -->
+    <div class="panel">
+        <h3>基本遍历结果</h3>
+        <div class="result-item"><span class="result-label">前序遍历:</span> <span id="preOrderRes"></span></div>
+        <div class="result-item"><span class="result-label">中序遍历:</span> <span id="inOrderRes"></span></div>
+        <div class="result-item"><span class="result-label">后序遍历:</span> <span id="postOrderRes"></span></div>
+        <div class="result-item"><span class="result-label">层序遍历:</span> <span id="levelOrderRes"></span></div>
+    </div>
+
+    <!-- 结构分析 -->
+    <div class="panel">
+        <h3>结构与性质分析</h3>
+        <div class="result-item"><span class="result-label">节点总数:</span> <span id="totalNodesRes"></span></div>
+        <div class="result-item"><span class="result-label">树的高度:</span> <span id="heightRes"></span></div>
+        <div class="result-item"><span class="result-label">最大宽度:</span> <span id="maxWidthRes"></span></div>
+        <hr style="border: 0; border-top: 1px solid #eee; margin: 10px 0;">
+        <div class="result-item"><span class="result-label">是否为满二叉树:</span> <span id="isFullRes"></span></div>
+        <div class="result-item"><span class="result-label">是否为完全二叉树:</span> <span id="isCompleteRes"></span></div>
+        <div class="result-item"><span class="result-label">是否为二叉搜索树:</span> <span id="isBstRes"></span></div>
+    </div>
+
+    <!-- 路径与 LCA -->
+    <div class="panel full-width">
+        <h3>高级路径查找</h3>
+        
+        <div style="display: flex; gap: 40px; flex-wrap: wrap;">
+            <!-- 基础路径查找 -->
+            <div>
+                <label>单节点路径查找:</label>
+                <div class="flex-row">
+                    <input type="number" id="targetInput" placeholder="目标值">
+                    <button onclick="executePathFind()">查找路径</button>
+                </div>
+                <div class="result-item" style="margin-top: 10px;"><span class="result-label">查找结果:</span> <span id="pathRes">-</span></div>
+            </div>
+
+            <!-- 拓展2: 最近公共祖先 -->
+            <div>
+                <label>拓展2: 最近公共祖先(LCA)查找:</label>
+                <div class="flex-row">
+                    <input type="number" id="lcaInput1" placeholder="节点A">
+                    <input type="number" id="lcaInput2" placeholder="节点B">
+                    <button class="action-btn" onclick="executeLCA()">计算 LCA</button>
+                </div>
+                <div class="result-item" style="margin-top: 10px;"><span class="result-label">LCA 结果:</span> <span id="lcaRes">-</span></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+class TreeNode {
+    constructor(val) {
+        this.val = val;
+        this.left = null;
+        this.right = null;
+    }
+}
+
+let globalRoot = null; // 全局保存当前的树结构
+let animationTimer = null; // 动画计时器
+
+window.onload = function() {
+    drawTreeCanvas(null);
+}
+
+function loadDemo() {
+    document.getElementById('treeInput').value = "[8, 4, 12, 2, 6, 10, 14, null, null, 5, 7]";
+    analyzeTree();
+}
+
+// 拓展1：随机生成二叉搜索树 (BST)
+function generateRandomBST() {
+    const nodeCount = Math.floor(Math.random() * 8) + 5; // 5到12个节点
+    const vals = new Set();
+    while(vals.size < nodeCount) {
+        vals.add(Math.floor(Math.random() * 100)); // 0-99的随机数
+    }
+    const arr = Array.from(vals);
+    
+    // 构建合法 BST
+    let root = new TreeNode(arr[0]);
+    for(let i = 1; i < arr.length; i++) {
+        insertIntoBST(root, arr[i]);
+    }
+    
+    // 将 BST 序列化回层序数组展示给用户
+    const uiArray = serializeTree(root);
+    document.getElementById('treeInput').value = JSON.stringify(uiArray);
+    analyzeTree(); // 自动分析
+}
+
+function insertIntoBST(node, val) {
+    if (val < node.val) {
+        if (!node.left) node.left = new TreeNode(val);
+        else insertIntoBST(node.left, val);
+    } else {
+        if (!node.right) node.right = new TreeNode(val);
+        else insertIntoBST(node.right, val);
+    }
+}
+
+// 将树转为带有 null 的完整层序数组
+function serializeTree(root) {
+    if (!root) return [];
+    let res = [];
+    let queue = [root];
+    while (queue.length > 0) {
+        let node = queue.shift();
+        if (node) {
+            res.push(node.val);
+            queue.push(node.left);
+            queue.push(node.right);
+        } else {
+            res.push(null);
+        }
+    }
+    // 移除末尾多余的 null
+    while (res[res.length - 1] === null) res.pop();
+    return res;
+}
+
+function analyzeTree() {
+    // 停止可能正在运行的动画
+    if(animationTimer) clearInterval(animationTimer);
+    
+    const inputStr = document.getElementById('treeInput').value;
+    let arr = [];
+    try {
+        arr = JSON.parse(inputStr.replace(/null/gi, 'null'));
+    } catch (e) {
+        alert("输入格式错误，请确保使用合法的数组格式！");
+        return;
+    }
+
+    globalRoot = buildTree(arr);
+    drawTreeCanvas(globalRoot); // 初始绘制无高亮
+
+    // 更新基本数据
+    document.getElementById('preOrderRes').innerText = preOrder(globalRoot).join(' ');
+    document.getElementById('inOrderRes').innerText = inOrder(globalRoot).join(' ');
+    document.getElementById('postOrderRes').innerText = postOrder(globalRoot).join(' ');
+    document.getElementById('levelOrderRes').innerText = levelOrder(globalRoot).join(' ');
+
+    const totalNodes = countNodes(globalRoot);
+    const height = getHeight(globalRoot);
+    const levelCounts = getNodesPerLevel(globalRoot);
+    
+    document.getElementById('totalNodesRes').innerText = totalNodes;
+    document.getElementById('heightRes').innerText = height;
+    document.getElementById('maxWidthRes').innerText = levelCounts.length > 0 ? Math.max(...levelCounts) : 0;
+    
+    document.getElementById('isFullRes').innerText = (totalNodes === Math.pow(2, height) - 1) && globalRoot !== null ? "是" : "否";
+    document.getElementById('isCompleteRes').innerText = isCompleteTree(globalRoot) ? "是" : "否";
+    document.getElementById('isBstRes').innerText = isBST(globalRoot) ? "是" : "否";
+    
+    // 清空路径和LCA结果
+    document.getElementById('pathRes').innerText = "-";
+    document.getElementById('lcaRes').innerText = "-";
+}
+
+// ================= 拓展3：遍历动画演示 =================
+function animateTraversal(type) {
+    if (!globalRoot) return alert("请先解析一棵二叉树！");
+    if (animationTimer) clearInterval(animationTimer); // 停止之前的动画
+    
+    let pathArray = [];
+    if (type === 'pre') pathArray = preOrder(globalRoot);
+    else if (type === 'in') pathArray = inOrder(globalRoot);
+    else if (type === 'post') pathArray = postOrder(globalRoot);
+    else if (type === 'level') pathArray = levelOrder(globalRoot);
+
+    let currentIndex = 0;
+    
+    // 立即执行第一次
+    drawTreeCanvas(globalRoot, pathArray[currentIndex]);
+    currentIndex++;
+
+    animationTimer = setInterval(() => {
+        if (currentIndex >= pathArray.length) {
+            clearInterval(animationTimer);
+            setTimeout(() => drawTreeCanvas(globalRoot), 800); // 结束后恢复原状
+            return;
+        }
+        drawTreeCanvas(globalRoot, pathArray[currentIndex]);
+        currentIndex++;
+    }, 800); // 每 0.8 秒跳动一次
+}
+
+// ================= 路径相关执行函数 =================
+function executePathFind() {
+    if (!globalRoot) return alert("请先解析一棵树");
+    const targetStr = document.getElementById('targetInput').value;
+    if (!targetStr) return;
+    
+    let path = [];
+    if (findPath(globalRoot, Number(targetStr), path)) {
+        document.getElementById('pathRes').innerText = path.join(' → ') + ` (第 ${path.length} 层)`;
+    } else {
+        document.getElementById('pathRes').innerText = "未找到该节点";
+    }
+}
+
+// 拓展2：最近公共祖先 (LCA) 执行逻辑
+function executeLCA() {
+    if (!globalRoot) return alert("请先解析一棵树");
+    const val1Str = document.getElementById('lcaInput1').value;
+    const val2Str = document.getElementById('lcaInput2').value;
+    if (!val1Str || !val2Str) return alert("请输入两个节点的值");
+
+    const val1 = Number(val1Str);
+    const val2 = Number(val2Str);
+    
+    // 先检查两个节点是否都在树中
+    let p1 = [], p2 = [];
+    if (!findPath(globalRoot, val1, p1)) return alert(`树中不存在节点 ${val1}`);
+    if (!findPath(globalRoot, val2, p2)) return alert(`树中不存在节点 ${val2}`);
+
+    const lcaNode = lowestCommonAncestor(globalRoot, val1, val2);
+    if (lcaNode) {
+        document.getElementById('lcaRes').innerHTML = `<span style="color:#e67e22; font-weight:bold;">${lcaNode.val}</span>`;
+        // 动画高亮一下这个公共祖先
+        drawTreeCanvas(globalRoot, lcaNode.val);
+    }
+}
+
+function lowestCommonAncestor(root, p, q) {
+    if (!root || root.val === p || root.val === q) return root;
+    let left = lowestCommonAncestor(root.left, p, q);
+    let right = lowestCommonAncestor(root.right, p, q);
+    if (left && right) return root;
+    return left ? left : right;
+}
+
+// ================= 图形化绘制 (加入高亮参数 highlightVal) =================
+function drawTreeCanvas(root, highlightVal = null) {
+    const canvas = document.getElementById('treeCanvas');
+    const ctx = canvas.getContext('2d');
+    
+    if (!root) {
+        canvas.width = 960; canvas.height = 200;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        return;
+    }
+
+    const height = getHeight(root);
+    const maxLeaves = Math.pow(2, height - 1); 
+    canvas.width = Math.max(960, maxLeaves * 60); 
+    canvas.height = Math.max(300, height * 80 + 40);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    function drawNode(node, x, y, hGap) {
+        if (!node) return;
+
+        ctx.lineWidth = 2; ctx.strokeStyle = '#bdc3c7';
+        if (node.left) {
+            ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - hGap, y + 80); ctx.stroke();
+            drawNode(node.left, x - hGap, y + 80, hGap / 2);
+        }
+        if (node.right) {
+            ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + hGap, y + 80); ctx.stroke();
+            drawNode(node.right, x + hGap, y + 80, hGap / 2);
+        }
+
+        ctx.beginPath();
+        ctx.arc(x, y, 22, 0, 2 * Math.PI);
+        // 如果当前节点的值等于需要高亮的值，则使用橙色，否则蓝色
+        if (node.val === highlightVal) {
+            ctx.fillStyle = '#e67e22'; 
+            ctx.strokeStyle = '#d35400';
+            // 添加光晕效果
+            ctx.shadowColor = '#e67e22';
+            ctx.shadowBlur = 10;
+        } else {
+            ctx.fillStyle = '#3498db'; 
+            ctx.strokeStyle = '#2980b9';
+            ctx.shadowBlur = 0; // 取消光晕
+        }
+        
+        ctx.fill();
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        ctx.shadowBlur = 0; // 重置阴影以免影响文字
+        ctx.font = "bold 15px Consolas";
+        ctx.fillStyle = '#ffffff';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(node.val, x, y);
+    }
+    drawNode(root, canvas.width / 2, 40, canvas.width / 4);
+}
+
+// ================= 基础核心算法 =================
+function buildTree(arr) {
+    if (!arr || arr.length === 0 || arr[0] === null) return null;
+    let root = new TreeNode(arr[0]), q = [root], i = 1;
+    while (q.length > 0 && i < arr.length) {
+        let curr = q.shift();
+        if (arr[i] !== null && arr[i] !== undefined) { curr.left = new TreeNode(arr[i]); q.push(curr.left); }
+        i++;
+        if (i < arr.length && arr[i] !== null && arr[i] !== undefined) { curr.right = new TreeNode(arr[i]); q.push(curr.right); }
+        i++;
+    }
+    return root;
+}
+function preOrder(root) { let res = []; function t(n) { if(!n)return; res.push(n.val); t(n.left); t(n.right); } t(root); return res; }
+function inOrder(root) { let res = []; function t(n) { if(!n)return; t(n.left); res.push(n.val); t(n.right); } t(root); return res; }
+function postOrder(root) { let res = []; function t(n) { if(!n)return; t(n.left); t(n.right); res.push(n.val); } t(root); return res; }
+function levelOrder(root) { if(!root) return []; let res=[], q=[root]; while(q.length>0){ let n=q.shift(); res.push(n.val); if(n.left)q.push(n.left); if(n.right)q.push(n.right); } return res; }
+function countNodes(node) { if(!node) return 0; return 1 + countNodes(node.left) + countNodes(node.right); }
+function getHeight(node) { if(!node) return 0; return 1 + Math.max(getHeight(node.left), getHeight(node.right)); }
+function getNodesPerLevel(root) { if(!root) return []; let c=[], q=[root]; while(q.length>0){ let s=q.length; c.push(s); for(let i=0;i<s;i++){ let n=q.shift(); if(n.left)q.push(n.left); if(n.right)q.push(n.right); } } return c; }
+function isCompleteTree(root) { if(!root) return true; let q=[root], s=false; while(q.length>0){ let n=q.shift(); if(n===null) s=true; else { if(s) return false; q.push(n.left); q.push(n.right); } } return true; }
+function isBST(root) { function v(n, min, max){ if(!n) return true; if(n.val<=min || n.val>=max) return false; return v(n.left, min, n.val) && v(n.right, n.val, max); } return v(root, -Infinity, Infinity); }
+function findPath(node, target, path) { if(!node) return false; path.push(node.val); if(node.val===target) return true; if(findPath(node.left, target, path) || findPath(node.right, target, path)) return true; path.pop(); return false; }
+</script>
+</body>
+</html>
